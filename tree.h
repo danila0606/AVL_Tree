@@ -25,14 +25,6 @@ namespace tr {
         Node(Node&& other) = delete;
         Node& operator=(Node&& other) = delete;
 
-        ~Node() {
-            if (left_)
-                delete left_;
-            if(right_)
-                delete right_;
-
-        }
-
         //..........................const_methods.............................
         Key_t GetKey() const { return key_;};
         unsigned char GetHeight() const { return height_;};
@@ -57,14 +49,33 @@ namespace tr {
     class Tree final {
 
     public:
+        class Iterator;
 
         Tree() = default;
 
-        Tree(const Tree& other) = delete;
-        Tree& operator=(const Tree& other) = delete;
+        Tree(const Tree& other) {
+            Key_t head_key = other.head_->GetKey();
+            head_ = new Node<Key_t>(head_key);
 
-        Tree(Tree&& Tree) = delete;
-        Tree& operator=(Tree&& other) = delete;
+            for (int i = 0; i < other.nodes_.size(); ++i) {
+                auto* copy_node = new Node<Key_t> (other.nodes_[i]->GetKey());
+                Insert(copy_node->GetKey());
+            }
+        }
+        Tree& operator=(const Tree& other) {
+            if (this != &other) {
+                auto temp(other);
+                my_swap(temp);
+            }
+            return *this;
+        }
+
+        Tree(Tree&& other) noexcept {
+            my_swap(other);
+        }
+        Tree& operator=(Tree&& other) noexcept {
+            my_swap(other);
+        }
 
 
         void Insert(const Key_t& key);
@@ -74,6 +85,7 @@ namespace tr {
     private:
 
         Node<Key_t>* head_ = nullptr;
+        std::vector<Node<Key_t>*> nodes_;
 
     private:
 
@@ -81,6 +93,11 @@ namespace tr {
         Node<Key_t>* Rotate(Node<Key_t>* node, Dir dir);
         Node<Key_t>* Balance(Node<Key_t>* node);
         void UpdateHeight(Node<Key_t>* node);
+
+        void my_swap (Tree& rhs) noexcept {
+            std::swap (this->head_, rhs.head_);
+            std::swap (this->nodes_, rhs.nodes_);
+        }
 
     public:
 
@@ -92,6 +109,13 @@ namespace tr {
 
             My_Iterator() = default;
 
+            using iterator_category = std::bidirectional_iterator_tag;
+            using difference_type = std::ptrdiff_t;
+            using value_type = Key_t;
+            using reference = Key_t&;
+            using pointer = Node<Key_t>*;
+
+
             My_Iterator(const My_Iterator& other) = default;
             My_Iterator& operator=(const My_Iterator& other) = default;
 
@@ -99,8 +123,8 @@ namespace tr {
             My_Iterator& operator=(My_Iterator&& other) noexcept = default;
 
 
-            Key_t operator*() const { return node_->GetKey();};
-            const Node<Key_t>* operator->() const { return node_;};
+            value_type operator*() const { return node_->GetKey();};
+            pointer operator->() const { return node_;};
 
             bool operator==(const My_Iterator& rhs) const { return this->node_ == rhs.node_;};
             bool operator!=(const My_Iterator& rhs) const { return !(*this == rhs);};
@@ -220,6 +244,7 @@ namespace tr {
         trace.pop();
 
         auto new_node = new Node(key);
+        nodes_.push_back(new_node);
 
         if(current_node->GetKey() < key)
             current_node->SetChild(new_node, Dir::Right);
@@ -250,11 +275,11 @@ namespace tr {
         }
     }
 
-
     template <typename Key_t>
     Tree<Key_t>::~Tree() {
 
-        delete head_;
+        for (auto&& elem : nodes_)
+            delete elem;
     }
 
     template<typename Key_t>
@@ -315,6 +340,7 @@ namespace tr {
     typename Tree<Key_t>::My_Iterator Tree<Key_t>::end() const {
         return My_Iterator(*this, nullptr);
     }
+
 
     template<typename Key_t>
     typename Tree<Key_t>::My_Iterator Tree<Key_t>::My_Iterator::operator++() {
