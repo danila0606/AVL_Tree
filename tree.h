@@ -27,18 +27,18 @@ namespace tr {
 
         //..........................const_methods.............................
         Key_t GetKey() const { return key_;};
-        unsigned char GetHeight() const { return height_;};
+        char GetHeight() const { return height_;};
         Node* GetChild(Dir dir) const { return dir == Dir::Left ? left_ : right_;};
         //.....................................................................
 
-        void SetHeight(unsigned char height) { height_ = height;};
+        void SetHeight(char height) { height_ = height;};
         void SetChild(Node* child, Dir dir) { if (dir == Dir::Left) left_ = child;
                                               else                  right_ = child;};
 
     private:
 
         Key_t key_;
-        unsigned char height_;
+        char height_;
         Node* left_;
         Node* right_;
 
@@ -49,18 +49,17 @@ namespace tr {
     class Tree final {
 
     public:
-        class Iterator;
 
         Tree() = default;
 
         Tree(const Tree& other) {
-            Key_t head_key = other.head_->GetKey();
-            head_ = new Node<Key_t>(head_key);
 
-            for (int i = 0; i < other.nodes_.size(); ++i) {
-                auto* copy_node = new Node<Key_t> (other.nodes_[i]->GetKey());
-                Insert(copy_node->GetKey());
-            }
+            Tree<Key_t> temp_tree;
+
+            for (int i = 0; i < other.nodes_.size(); ++i)
+                temp_tree.Insert(other.nodes_[i]->GetKey());
+
+            std::swap(*this, temp_tree);
         }
         Tree& operator=(const Tree& other) {
             if (this != &other) {
@@ -89,14 +88,14 @@ namespace tr {
 
     private:
 
-        unsigned char BalanceFactor(Node<Key_t>* node) const;
+        char BalanceFactor(Node<Key_t>* node) const;
         Node<Key_t>* Rotate(Node<Key_t>* node, Dir dir);
         Node<Key_t>* Balance(Node<Key_t>* node);
         void UpdateHeight(Node<Key_t>* node);
 
         void my_swap (Tree& rhs) noexcept {
-            std::swap (this->head_, rhs.head_);
-            std::swap (this->nodes_, rhs.nodes_);
+            std::swap (head_, rhs.head_);
+            std::swap (nodes_, rhs.nodes_);
         }
 
     public:
@@ -109,7 +108,7 @@ namespace tr {
 
             My_Iterator() = default;
 
-            using iterator_category = std::bidirectional_iterator_tag;
+            using iterator_category = std::input_iterator_tag;
             using difference_type = std::ptrdiff_t;
             using value_type = Key_t;
             using reference = Key_t&;
@@ -126,18 +125,21 @@ namespace tr {
             value_type operator*() const { return node_->GetKey();};
             pointer operator->() const { return node_;};
 
-            bool operator==(const My_Iterator& rhs) const { return this->node_ == rhs.node_;};
+            bool operator==(const My_Iterator& rhs) const { return node_ == rhs.node_;};
             bool operator!=(const My_Iterator& rhs) const { return !(*this == rhs);};
 
             My_Iterator operator++();
-            My_Iterator operator--();
+            My_Iterator operator++(int);
 
         private:
 
-            explicit My_Iterator(const Tree<Key_t>& outer_tree, Node<Key_t>* node) : tree_{outer_tree}, node_{node} {};
+            explicit My_Iterator(const Tree<Key_t>& outer_tree, Node<Key_t>* node, std::stack<Node<Key_t>*>&& trace)
+                : tree_(outer_tree), node_(node) { std::swap(trace, trace_);};
 
             const Tree<Key_t>& tree_ = nullptr;
             Node<Key_t>* node_ = nullptr;
+
+            std::stack<Node<Key_t>*> trace_;
 
             friend Tree;
         };
@@ -149,17 +151,19 @@ namespace tr {
         My_Iterator begin() const;
         My_Iterator end() const;
 
+        My_Iterator Begin(Node<Key_t>* node) const;
+
     };
 
     template <typename Key_t>
-    unsigned char Tree<Key_t>::BalanceFactor(Node<Key_t>* node) const {
+    char Tree<Key_t>::BalanceFactor(Node<Key_t>* node) const {
         if (!node)
             return 0;
 
-        unsigned char r = node->GetChild(Dir::Right) ? node->GetChild(Dir::Right)->GetHeight() : 0;
-        unsigned char l = node->GetChild(Dir::Left) ? node->GetChild(Dir::Left)->GetHeight() : 0;
+        char r = node->GetChild(Dir::Right) ? node->GetChild(Dir::Right)->GetHeight() : 0;
+        char l = node->GetChild(Dir::Left) ? node->GetChild(Dir::Left)->GetHeight() : 0;
 
-        return r - l;
+        return l - r;
     }
 
     template<typename Key_t>
@@ -168,10 +172,10 @@ namespace tr {
         if (!node)
             return;
 
-        unsigned char l = node->GetChild(Dir::Left) ? node->GetChild(Dir::Left)->GetHeight() : 0;
-        unsigned char r = node->GetChild(Dir::Right) ? node->GetChild(Dir::Right)->GetHeight() : 0;
+        char l = node->GetChild(Dir::Left) ? node->GetChild(Dir::Left)->GetHeight() : 0;
+        char r = node->GetChild(Dir::Right) ? node->GetChild(Dir::Right)->GetHeight() : 0;
 
-        node->SetHeight(std::max(l, r));
+        node->SetHeight(1 + std::max(l, r));
     }
 
 
@@ -200,15 +204,15 @@ namespace tr {
     template<typename Key_t>
     Node<Key_t>* Tree<Key_t>::Balance(Node<Key_t>* node) {
 
-        if(BalanceFactor(node) == 2) {
-            if((node->GetChild(Dir::Right) != nullptr) && (BalanceFactor(node->GetChild(Dir::Right)) < 0)) {
+        if(BalanceFactor(node) == -2) {
+            if((node->GetChild(Dir::Right) != nullptr) && (BalanceFactor(node->GetChild(Dir::Right)) > 0)) {
                 auto n = Rotate(node->GetChild(Dir::Right), Dir::Right);
                 node->SetChild(n, Dir::Right);
             }
             return Rotate(node, Dir::Left);
         }
-        if(BalanceFactor(node) == -2) {
-            if((node->GetChild(Dir::Left) != nullptr) && (BalanceFactor(node->GetChild(Dir::Left)) > 0)) {
+        if(BalanceFactor(node) == 2) {
+            if((node->GetChild(Dir::Left) != nullptr) && (BalanceFactor(node->GetChild(Dir::Left)) < 0)) {
                 auto n = Rotate(node->GetChild(Dir::Left), Dir::Left);
                 node->SetChild(n, Dir::Left);
             }
@@ -223,6 +227,7 @@ namespace tr {
 
         if(!head_) {
             head_ = new Node(key);
+            nodes_.push_back(head_);
             return;
         }
 
@@ -251,6 +256,7 @@ namespace tr {
         else
             current_node->SetChild(new_node, Dir::Left);
 
+
         while(current_node) {
 
             UpdateHeight(current_node);
@@ -278,7 +284,7 @@ namespace tr {
     template <typename Key_t>
     Tree<Key_t>::~Tree() {
 
-        for (auto&& elem : nodes_)
+        for (auto* elem : nodes_)
             delete elem;
     }
 
@@ -287,6 +293,7 @@ namespace tr {
 
         auto current_node = head_;
         decltype(current_node) previous_node = nullptr;
+        std::stack<Node<Key_t>*> trace;
 
         while(current_node) {
 
@@ -298,12 +305,16 @@ namespace tr {
             else if(cur_key > key) {
                 previous_node = current_node;
                 current_node = current_node->GetChild(Dir::Left);
+                if (current_node)
+                    trace.push(previous_node);
+                else
+                    break;
             }
             else
-                return My_Iterator(*this, current_node);
+                return My_Iterator(*this, current_node, std::move(trace));
         }
 
-        My_Iterator ret(*this, previous_node);
+        My_Iterator ret(*this, previous_node, std::move(trace));
 
         if(previous_node->GetKey() > key)
             return ret;
@@ -326,64 +337,87 @@ namespace tr {
     template<typename Key_t>
     typename Tree<Key_t>::My_Iterator Tree<Key_t>::begin() const {
 
-        if(!head_)
-            return My_Iterator(*this, nullptr);
+        if(!head_) {
+            std::stack<Node<Key_t>*> empty;
+            return My_Iterator(*this, nullptr, std::move(empty));
+        }
+        std::stack<Node<Key_t>*> trace;
 
         auto current_node = head_;
-        while(current_node->GetChild(Dir::Left))
-            current_node = current_node->GetChild(Dir::Left);
 
-        return My_Iterator(*this, current_node);
+        while(current_node->GetChild(Dir::Left)) {
+            trace.push(current_node);
+            current_node = current_node->GetChild(Dir::Left);
+        }
+
+        return My_Iterator(*this, current_node, std::move(trace));
+    }
+
+    template<typename Key_t>
+    typename Tree<Key_t>::My_Iterator Tree<Key_t>::Begin(Node<Key_t>* node) const {
+
+        if(!node) {
+            std::stack<Node<Key_t>*> empty;
+            return My_Iterator(*this, nullptr, std::move(empty));
+        }
+
+        std::stack<Node<Key_t>*> trace;
+
+        auto current_node = node;
+
+        while(current_node->GetChild(Dir::Left)) {
+            trace.push(current_node);
+            current_node = current_node->GetChild(Dir::Left);
+        }
+
+        return My_Iterator(*this, current_node, std::move(trace));
     }
 
     template<typename Key_t>
     typename Tree<Key_t>::My_Iterator Tree<Key_t>::end() const {
-        return My_Iterator(*this, nullptr);
+        std::stack<Node<Key_t>*> empty;
+        return My_Iterator(*this, nullptr, std::move(empty));
     }
 
 
     template<typename Key_t>
     typename Tree<Key_t>::My_Iterator Tree<Key_t>::My_Iterator::operator++() {
 
-        auto current_node = tree_.head_;
-        decltype(current_node) ans = nullptr;
+       if (!node_->GetChild(Dir::Right)) {
 
-        auto key = node_->GetKey();
+           if (!trace_.size())
+               node_ = nullptr;
+           else {
+               node_ = trace_.top();
+               trace_.pop();
+           }
 
-        while(current_node) {
-            auto cur_key = current_node->GetKey();
-            if(cur_key > key) {
-                ans = current_node;
-                current_node = current_node->GetChild(Dir::Left);
-            }
-            else
-                current_node = current_node->GetChild(Dir::Right);
-        }
+           auto temp(trace_);
+           return My_Iterator(tree_, node_, std::move(temp));
+       }
+       else {
+           auto it = tree_.Begin(node_->GetChild(Dir::Right));
+           node_ = it.node_;
+           std::vector<Node<Key_t>*> trace;
 
-        node_ = ans;
-        return My_Iterator(tree_, node_);
+           while (!it.trace_.empty()) {
+               trace.push_back(it.trace_.top());
+               it.trace_.pop();
+           }
+           for (auto iter = trace.rbegin(); iter != trace.rend(); ++iter)
+               trace_.push(*iter);
+
+           auto temp(trace_);
+           return My_Iterator(tree_, node_, std::move(temp));
+       }
+
     }
 
     template<typename Key_t>
-    typename Tree<Key_t>::My_Iterator Tree<Key_t>::My_Iterator::operator--() {
-
-        auto current_node = tree_.head_;
-        decltype(current_node) ans = nullptr;
-
-        auto key = node_->GetKey();
-
-        while(current_node) {
-            auto cur_key = current_node->GetKey();
-            if(cur_key < key) {
-                ans = current_node;
-                current_node = current_node->GetChild(Dir::Right);
-            }
-            else
-                current_node = current_node->GetChild(Dir::Left);
-        }
-
-        node_ = ans;
-        return My_Iterator(tree_, node_);
+    typename Tree<Key_t>::My_Iterator Tree<Key_t>::My_Iterator::operator++(int) {
+        auto tmp = *this;
+        ++(*this);
+        return tmp;
     }
 
 }

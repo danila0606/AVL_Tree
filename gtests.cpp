@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <exception>
+
 #include <gtest/gtest.h>
 
 std::string MyTest(const std::string& file_name) {
@@ -53,7 +54,7 @@ std::string MyTest(const std::string& file_name) {
     return answer.str();
 }
 
-/*
+
 
 TEST(Default_test, 1) {
 
@@ -65,8 +66,27 @@ TEST(Default_test, 2) {
     EXPECT_EQ(MyTest("tests/test2.txt"), "6 5 ");
 }
 
- TEST(10000, 1) {
+TEST(Default_test_10000, 1) {
 
     EXPECT_EQ(MyTest("tests/test3.txt"), "2586 3430 4724 2140 1347 2636 6612 694 390 7826 ");
 }
-*/
+
+TEST(Copy_Ctor, 1) {
+    tr::Tree<int> tree;
+
+    tree.Insert(10);
+    tree.Insert(20);
+    tree.Insert(30);
+    tree.Insert(40);
+
+    tr::Tree temp(tree);
+
+    auto it1 = tree.begin();
+    it1++;it1++;it1++;
+
+    auto it = temp.begin();
+    ++it;++it;++it;
+
+    EXPECT_EQ(*it, *it1);
+}
+
