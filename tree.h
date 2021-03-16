@@ -74,6 +74,7 @@ namespace tr {
         }
         Tree& operator=(Tree&& other) noexcept {
             my_swap(other);
+            return *this;
         }
 
 
@@ -231,7 +232,7 @@ namespace tr {
             return;
         }
 
-        auto current_node = head_;
+        auto* current_node = head_;
         std::stack<Node<Key_t>*> trace;
 
         while(current_node) {
@@ -291,7 +292,7 @@ namespace tr {
     template<typename Key_t>
     typename Tree<Key_t>::My_Iterator Tree<Key_t>::LowerBound(const Key_t &key) const {
 
-        auto current_node = head_;
+        auto* current_node = head_;
         decltype(current_node) previous_node = nullptr;
         std::stack<Node<Key_t>*> trace;
 
@@ -343,7 +344,7 @@ namespace tr {
         }
         std::stack<Node<Key_t>*> trace;
 
-        auto current_node = head_;
+        auto* current_node = head_;
 
         while(current_node->GetChild(Dir::Left)) {
             trace.push(current_node);
@@ -363,7 +364,7 @@ namespace tr {
 
         std::stack<Node<Key_t>*> trace;
 
-        auto current_node = node;
+        auto* current_node = node;
 
         while(current_node->GetChild(Dir::Left)) {
             trace.push(current_node);

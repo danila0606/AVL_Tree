@@ -13,7 +13,7 @@ std::string MyTest(const std::string& file_name) {
     std::ifstream istr(file_name);
 
     if (!istr.is_open()) {
-        std::cerr << "Cant open file!" << std::endl;
+        std::cerr << "Cant open file! " << file_name << std::endl;
         exit(0);
     }
 
@@ -24,8 +24,9 @@ std::string MyTest(const std::string& file_name) {
     for (std::size_t i = 0; i < N; ++i) {
 
         istr >> key;
-        if (!istr.good())
-            throw std::runtime_error("Problems with reading file");
+        if (!istr.good()) {
+            throw std::runtime_error("Problems with reading file 1: " + file_name);
+        }
 
         tree.Insert(key);
     }
@@ -36,8 +37,6 @@ std::string MyTest(const std::string& file_name) {
         int from, to;
         istr >> from >> to;
         requests.emplace_back(from, to);
-        if (istr.good())
-            throw std::runtime_error("Problems with reading file");
     }
     std::ostringstream answer;
 
@@ -88,5 +87,26 @@ TEST(Copy_Ctor, 1) {
     ++it;++it;++it;
 
     EXPECT_EQ(*it, *it1);
+}
+
+TEST(Copy_operator, 1) {
+
+    tr::Tree<int> tree;
+
+    tree.Insert(10);
+    tree.Insert(20);
+    tree.Insert(30);
+    tree.Insert(40);
+
+    tr::Tree temp = tree;
+
+    auto it1 = tree.begin();
+    it1++;it1++;it1++;
+
+    auto it = temp.begin();
+    ++it;++it;++it;
+
+    EXPECT_EQ(*it, *it1);
+
 }
 
